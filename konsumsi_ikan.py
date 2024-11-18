@@ -4,14 +4,14 @@ import plotly.express as px
 
 # Daftar negara di Asia Tenggara
 southeast_asian_countries = [
-    "Brunei", "Cambodia", "Indonesia", "Laos", "Malaysia", 
+    "Brunei", "Cambodia", "Indonesia", "Laos", "Malaysia",
     "Myanmar", "Philippines", "Singapore", "Thailand", "Vietnam", "Timor-Leste"
 ]
 
 # Judul aplikasi
-st.title("Analisis Perubahan Pola Konsumsi Ikan dan Makanan Laut (1961–2021)")
+st.title("Dashboard Analisis Konsumsi Ikan di Asia Tenggara (1961–2021)")
 
-# Unggah data
+# Unggah file data
 uploaded_file = st.file_uploader("Unggah file CSV Anda", type="csv")
 
 if uploaded_file is not None:
@@ -21,48 +21,52 @@ if uploaded_file is not None:
     # Filter hanya negara Asia Tenggara
     df = df[df['Entity'].isin(southeast_asian_countries)]
     
-    # Menampilkan preview data
+    # Menampilkan data awal sebagai referensi
     st.subheader("Data Awal")
     st.dataframe(df.head())
 
-    # Dropdown untuk memilih negara utama dan negara lainnya
-    countries = df['Entity'].unique()
-    comparison_countries = st.multiselect("Pilih negara lain untuk dibandingkan", countries, default=[c for c in countries][:10])
+    # Summary Konsumsi
+    st.subheader("Summary Data Konsumsi")
+    total_entities = len(df['Entity'].unique())
+    avg_consumption_all = df['Fish and seafood | 00002960 || Food available for consumption | 0645pc || kilograms per year per capita'].mean()
+    st.metric("Jumlah Negara", total_entities)
+    st.metric("Rata-rata Konsumsi Ikan", f"{avg_consumption_all:.2f} kg per kapita")
 
-    # Filter data berdasarkan negara yang dipilih
-    filtered_df = df[df['Entity'].isin(comparison_countries)]
-
-    # Visualisasi perubahan konsumsi
+    # Grafik Perubahan Konsumsi
     st.subheader("Grafik Perubahan Pola Konsumsi")
-    fig = px.line(
-        filtered_df,
+    fig_line = px.line(
+        df,
         x='Year',
         y='Fish and seafood | 00002960 || Food available for consumption | 0645pc || kilograms per year per capita',
         color='Entity',
         title="Perubahan Pola Konsumsi Ikan dan Makanan Laut (1961–2021)",
-        labels={'Fish and seafood | 00002960 || Food available for consumption | 0645pc || kilograms per year per capita': 'Konsumsi per Kapita (kg)', 'Year': 'Tahun'}
+        labels={'Fish and seafood | 00002960 || Food available for consumption | 0645pc || kilograms per year per capita': 'Konsumsi (kg)', 'Year': 'Tahun'}
     )
-    fig.update_layout(legend_title="Negara", xaxis_title="Tahun", yaxis_title="Konsumsi per Kapita (kg)")
-    st.plotly_chart(fig)
+    st.plotly_chart(fig_line)
 
-    # Perbandingan konsumsi rata-rata
-    st.subheader("Perbandingan Konsumsi Rata-Rata")
-    avg_consumption = filtered_df.groupby('Entity')['Fish and seafood | 00002960 || Food available for consumption | 0645pc || kilograms per year per capita'].mean().reset_index()
-    avg_consumption.columns = ['Negara', 'Rata-rata Konsumsi per Kapita (kg)']
-    st.table(avg_consumption)
+    # Pie Chart untuk Persentase Negara dengan Konsumsi Tinggi
+    st.subheader("Distribusi Konsumsi Ikan per Negara")
+    latest_year = df['Year'].max()
+    latest_data = df[df['Year'] == latest_year]
+    fig_pie = px.pie(
+        latest_data,
+        values='Fish and seafood | 00002960 || Food available for consumption | 0645pc || kilograms per year per capita',
+        names='Entity',
+        title=f"Distribusi Konsumsi Ikan di Tahun {latest_year}",
+        labels={'Entity': 'Negara', 'Fish and seafood': 'Konsumsi (kg)'}
+    )
+    st.plotly_chart(fig_pie)
 
-    # Dropdown untuk memilih tahun
-    st.subheader("Perbandingan Konsumsi Ikan Berdasarkan Tahun")
-    selected_year = st.selectbox("Pilih tahun untuk perbandingan", sorted(df['Year'].unique()))
-
-    # Filter data berdasarkan tahun yang dipilih
-    yearly_comparison = filtered_df[filtered_df['Year'] == selected_year]
-
-    # Menampilkan tabel konsumsi berdasarkan tahun
-    st.write(f"Konsumsi Ikan per Kapita pada Tahun {selected_year}")
-    yearly_comparison_table = yearly_comparison[['Entity', 'Fish and seafood | 00002960 || Food available for consumption | 0645pc || kilograms per year per capita']]
-    yearly_comparison_table.columns = ['Negara', 'Konsumsi per Kapita (kg)']
-    st.table(yearly_comparison_table)
-
+    # Bar Chart untuk Rata-rata Konsumsi
+    st.subheader("Rata-rata Konsumsi per Negara")
+    avg_data = df.groupby('Entity')['Fish and seafood | 00002960 || Food available for consumption | 0645pc || kilograms per year per capita'].mean().reset_index()
+    fig_bar = px.bar(
+        avg_data,
+        x='Entity',
+        y='Fish and seafood | 00002960 || Food available for consumption | 0645pc || kilograms per year per capita',
+        title="Rata-rata Konsumsi Ikan per Kapita (1961–2021)",
+        labels={'Fish and seafood | 00002960 || Food available for consumption | 0645pc || kilograms per year per capita': 'Rata-rata Konsumsi (kg)', 'Entity': 'Negara'}
+    )
+    st.plotly_chart(fig_bar)
 else:
-    st.info("Silakan unggah file CSV untuk melanjutkan analisis.")
+    st.info("Silakan unggah file CSV untuk melihat dashboard.")
